@@ -1,0 +1,128 @@
+
+
+```{r}
+library(tidyverse)
+library(lubridate)
+
+```
+
+```{r}
+data = read_csv(here::here("Fire_Incidents.csv"))
+```
+
+
+```{r}
+
+data$arrive_date_time = ymd_hms(data$arrive_date_time)
+data$dispatch_date_time = ymd_hms(data$dispatch_date_time)
+data$response_time = data$arrive_date_time - data$dispatch_date_time
+```
+
+```{r}
+mean(data$response_time, na.rm = T)
+```
+
+```{r}
+#from running the previous code above, we can see that the avg response time in Wake County is 318.76 seconds, or about 5.313 minutes
+# Does this response time vary by station? What stations have the highest and lowest average response times? [0.5 points]
+
+avg_response_times = data |>
+  group_by(station) |>
+  summarize(avg_response_time = mean(response_time, na.rm = T))
+
+avg_response_times
+
+#from running this code, we create a table with with two columns that shows the average response time per station. station 29 has the highest response time with 496 seconds, and station 13 has the shortest response time with 223 seconds.
+
+```
+
+```{r}
+#Have Wake County Fire’s response times been going up or down over time? What might be the reason for these changes? [0.5 points]
+
+data$year = year(data$arrive_date_time)
+yearly_avg_response_time = data |>
+  group_by(year) |>
+  summarize(avg_response_times = mean(response_time, na.rm = T))
+
+
+ggplot(yearly_avg_response_time, aes(x = year, y = avg_response_times)) + geom_line() + geom_point()
+
+#this code creates a plot showing the average response times per yaer. I first started by creating a variable to store the average response times per year because we do not have that in the data set. Grouping by year, we calculated avg response times and used gg plot to create a line graph. from 2007/8 - 2017/18, response times remained the same. After 2018, we saw a spike in response times followed by a sharp decline right before covid. This drop in response times continued after 2020 as well.
+
+```
+
+```{r}
+#At what times of day are fire calls most likely to occur? [1 point]
+
+data$hour = hour(data$dispatch_date_time)
+num_calls_per_hour = data |>
+  group_by(hour) |>
+  summarize (call_count = n())
+
+num_calls_per_hour
+#this table shows the number of calls per hour, using the dispatch time. I used n() with summarize to find the count, grouped by hour. It seems that calls are generally more likely to be made from 2pm - 1am, with all of those hours being in the 5 digit area. The most calls were made from 9pm to midnight, with 10PM taking the cake for most calls.
+
+
+```
+
+```{r}
+##5  How many calls to Wake County Fire are recorded in this dataset, and how many of them are actual fires? [0.5 points]
+#There were 220,047 calls made in this data set(I just looked at the number of rows in the dataset)
+
+count_100_173 = sum(data$incident_type >= 100 & data$incident_type <= 173, na.rm = T)
+
+count_100_173
+#this code finds the number of calls with incident number 100-173, inclusive. This is the range of codes that represents a real fire. We found that out of the 220,047 calls made in this set, only 17,231 of them were for fires, under 8%
+```
+
+```{r}
+#6 - It is reasonable that firefighters might respond more quickly to some types of incidents than others (e.g., a building fire, code 111 might be higher priority than a cat stuck in a tree, code 542). Using the reference guide linked above to determine appropriate incident codes, evaluate the average response time to actual fires. Is this response time faster than the average response time for all incidents? [0.5 points]
+
+only_100_173_data = data[data$incident_type >=100 & data$incident_type <=173,]
+
+avg_fire_response_time = mean(only_100_173_data$response_time, na.rm = T)
+
+avg_fire_response_time
+
+#The average response time is shorter for actual fires, with an avg response time of 5.1831 minutes or 310.9 seconds compared to 318.76 seconds or 5.313 minutes
+```
+
+```{r}
+#repeating steps 2-4 with the filtered data
+avg_response_time_per_station = data |>
+  filter(incident_type >=100 & incident_type <=173)|>
+  group_by(station) |>
+  summarize(avg_response = mean(response_time, na.rm = T))
+avg_response_time_per_station
+#the average varies by station, with station 23 having the longest response time at 586 seconds and station 3 having the shortest at 232 seconds. It is important to notice that station 13 is not on this table. This is so because none of its calls were for actual fires. 
+```
+
+```{r}
+#for new data set - Have Wake County Fire’s response times been going up or down over time? What might be the reason for these changes? [0.5 points]
+
+data$year = year(data$arrive_date_time)
+
+avg_reponses_per_year = data |>
+  filter(incident_type >100 & incident_type <= 173) |>
+  group_by(year) |>
+  summarize(avg_response_time = mean(response_time, na.rm = T))
+ggplot(avg_reponses_per_year, aes(x = year, y = avg_response_time)) + geom_line() + geom_point()
+avg_reponses_per_year
+
+#this trend is a lot more volatile. When it comes to responding to fires, Wake county had three local peaks of response times, each of them getting smaller and smaller. This data could suggest that the overall response time is going down, but it is important to recognize that the newer peaks are still higher response times than some of the data before it. 
+
+```
+
+```{r}
+# new filtered data - At what times of day are fire calls most likely to occur? [1 point]
+data$hour = hour(data$dispatch_date_time)
+num_calls_per_hour_new = data |>
+  filter(incident_type > 100 & incident_type <= 173) |>
+  group_by(hour) |>
+  summarize (call_count = n())
+
+num_calls_per_hour_new
+
+#we see the most calls from 6pm - midnight, all 4 digit numbers. The least calls come from 7-10AM, each of those hours having <300 calls
+
+```
